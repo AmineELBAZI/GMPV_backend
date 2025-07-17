@@ -1,0 +1,158 @@
+package com.GMPV.GMPV.Service;
+
+import com.GMPV.GMPV.Entity.Produit;
+import com.GMPV.GMPV.Entity.Stock;
+import com.GMPV.GMPV.Entity.Vente;
+import com.GMPV.GMPV.Repository.StockRepository;
+import com.GMPV.GMPV.Repository.VenteRepository;
+
+import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.GMPV.GMPV.DTO.VenteProduitFiniRequest;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import java.util.List;
+
+@Service
+public class VenteService {
+
+    private final VenteRepository venteRepository;
+    private final StockRepository stockRepository;
+
+    private static final Logger logger = LoggerFactory.getLogger(VenteService.class);
+
+    public VenteService(VenteRepository venteRepository, StockRepository stockRepository) {
+        this.venteRepository = venteRepository;
+        this.stockRepository = stockRepository;
+    }
+
+    public Vente enregistrerVente(Vente vente) {
+        return venteRepository.save(vente);
+    }
+
+    public List<Vente> enregistrerVentesMultiples(Vente venteRequest) {
+        List<Vente> ventesEnregistrees = new ArrayList<>();
+
+        Long boutiqueId = venteRequest.getBoutique().getId();
+        if (boutiqueId == null) {
+            throw new RuntimeException("ID de la boutique manquant.");
+        }
+
+        for (Produit produitVendu : venteRequest.getProduits()) {
+            Long produitId = produitVendu.getId();
+            double quantiteVendue = produitVendu.getQuantityStock();
+            double priceSell = produitVendu.getPrice_sell();
+
+            Stock stock = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, produitId)
+                    .orElseThrow(() -> new RuntimeException("Stock introuvable pour produit ID: " + produitId));
+
+            double stockDisponible = stock.getQuantity();
+            if (quantiteVendue > stockDisponible) {
+                throw new RuntimeException("Stock insuffisant pour le produit '" + produitVendu.getName() + "'.");
+            }
+
+            stock.setQuantity(stockDisponible - quantiteVendue);
+            stockRepository.save(stock);
+
+            Vente vente = new Vente();
+            vente.setBoutique(venteRequest.getBoutique());
+            vente.setProduits(List.of(produitVendu)); // 1 produit par vente
+            vente.setQuantity(quantiteVendue);
+            vente.setMontantTotal(quantiteVendue * priceSell);
+            
+            vente.setDateVente(LocalDateTime.now());
+
+            Vente saved = venteRepository.save(vente);
+            ventesEnregistrees.add(saved);
+        }
+
+        return ventesEnregistrees;
+    }
+
+
+
+    
+    public Vente vendreProduitFini(VenteProduitFiniRequest request) {
+        Long boutiqueId = request.getBoutiqueId();
+        Long bouteilleId = request.getBouteilleId();
+        Long huileId = request.getHuileId();
+        Long alcoolId = request.getAlcoolId();
+
+        // Charger les stocks
+        Stock stockBouteille = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, bouteilleId)
+            .orElseThrow(() -> new RuntimeException("Stock de bouteille introuvable"));
+
+        Stock stockHuile = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, huileId)
+            .orElseThrow(() -> new RuntimeException("Stock d'huile introuvable"));
+
+        Stock stockAlcool = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, alcoolId)
+            .orElseThrow(() -> new RuntimeException("Stock d'alcool introuvable"));
+
+        Produit bouteille = stockBouteille.getProduit();
+        String size = bouteille.getName(); // Assure-toi que le nom contient la taille ("20 ml", "30 ml", etc.)
+
+        double huileNeeded, alcoolNeeded;
+        if (size.contains("20")) {
+            huileNeeded = 7;
+            alcoolNeeded = 13;
+        } else if (size.contains("30")) {
+            huileNeeded = 10;
+            alcoolNeeded = 20;
+        } else if (size.contains("50")) {
+            huileNeeded = 18;
+            alcoolNeeded = 32;
+        } else {
+            throw new RuntimeException("Taille de bouteille non reconnue : " + size);
+        }
+
+        // Vérification de la disponibilité
+        if (stockBouteille.getQuantity() < 1) {
+            throw new RuntimeException("Stock de bouteille insuffisant");
+        }
+
+        if (stockHuile.getQuantity() < huileNeeded) {
+            throw new RuntimeException("Stock d'huile insuffisant");
+        }
+
+        if (stockAlcool.getQuantity() < alcoolNeeded) {
+            throw new RuntimeException("Stock d'alcool insuffisant");
+        }
+
+        // Mise à jour des stocks
+        stockBouteille.setQuantity(stockBouteille.getQuantity() - 1);
+        stockHuile.setQuantity(stockHuile.getQuantity() - huileNeeded);
+        stockAlcool.setQuantity(stockAlcool.getQuantity() - alcoolNeeded);
+
+        stockRepository.saveAll(Arrays.asList(stockBouteille, stockHuile, stockAlcool));
+
+        // Création de la vente
+        Vente vente = new Vente();
+        vente.setDateVente(LocalDateTime.now());
+        vente.setQuantity(1); // 1 bouteille vendue
+        vente.setBoutique(stockBouteille.getBoutique());
+        vente.setMontantTotal(request.getMontantTotal()); // Prix fourni par le vendeur
+        vente.setProduits(Arrays.asList(bouteille, stockHuile.getProduit(), stockAlcool.getProduit()));
+
+        return venteRepository.save(vente);
+    }
+
+    public List<Vente> getAllVentes() {
+        return venteRepository.findAll();
+    }
+
+    public Vente getVenteById(Long id) {
+        return venteRepository.findById(id).orElse(null);
+    }
+
+    public List<Vente> getVentesByBoutique(Long boutiqueId) {
+        return venteRepository.findByBoutiqueId(boutiqueId);
+    }
+
+	public static Logger getLogger() {
+		return logger;
+	}
+}
