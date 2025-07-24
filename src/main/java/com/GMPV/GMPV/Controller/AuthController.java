@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @CrossOrigin(origins = {
     "http://localhost:3000", 
-    "https://gmpv-frontend-sp4y.vercel.app" // Add your deployed frontend URL here
+    "http://gmpv-frontend-o58z.vercel.app" // Add your deployed frontend URL here
 })
 @RestController
 @RequestMapping("/api/auth")

@@ -12,7 +12,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 @CrossOrigin(origins = {
 	    "http://localhost:3000",
-	    "https://gmpv-frontend-sp4y.vercel.app"
+	    "http://gmpv-frontend-o58z.vercel.app"
 	})
 public class UserController {
 

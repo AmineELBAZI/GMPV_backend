@@ -16,7 +16,7 @@ import org.springframework.http.MediaType;
 @RequestMapping("/api/categories")
 @CrossOrigin(origins = {
 	    "http://localhost:3000",
-	    "https://gmpv-frontend-sp4y.vercel.app"
+	    "http://gmpv-frontend-o58z.vercel.app"
 	})
 public class CategorieController {
 
