@@ -42,24 +42,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors() // ✅ Add this line to enable CORS
+            .and()
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Allow login/logout without authentication
                 .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
-                
-                
-                
-                // VENDEUR specific access
-                .requestMatchers("/api/boutiques/*").permitAll()
+                .requestMatchers("/api/boutiques/*").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/boutiques/*/produits").hasAnyRole("VENDEUR", "ADMIN")
-                .requestMatchers("/api/stocks/*/valider").hasRole("VENDEUR")
-                .requestMatchers("/api/ventes/multiple").hasRole("VENDEUR")
-                .requestMatchers("/api/ventes/produit-fini").hasRole("VENDEUR")
+                .requestMatchers("/api/stocks/*/valider").hasAnyRole("VENDEUR", "ADMIN")
+                .requestMatchers("/api/ventes/multiple").hasAnyRole("VENDEUR", "ADMIN")
+                .requestMatchers("/api/ventes/produit-fini").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/ventes/boutique/**").hasAnyRole("VENDEUR", "ADMIN")
-                
-             // ADMIN can access everything
                 .requestMatchers("/**").hasRole("ADMIN")
-                // Everything else requires authentication (and by previous lines, only ADMIN can do all)
                 .anyRequest().authenticated()
             )
             .httpBasic(Customizer.withDefaults())
@@ -76,6 +70,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
  
 }

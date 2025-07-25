@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @CrossOrigin(origins = {
-	    "http://localhost:3000",
-	    "http://gmpv-frontend-o58z.vercel.app"
+	    "http://localhost:3000", 
+	    "https://gmpv-frontend-o58z.vercel.app"
 	})
 @RequestMapping("/vendeur")
 public class VendeurController {

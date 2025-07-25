@@ -5,9 +5,11 @@ import com.GMPV.GMPV.Entity.Produit;
 import com.GMPV.GMPV.Entity.Stock;
 import com.GMPV.GMPV.Entity.StockStatus;
 import com.GMPV.GMPV.Entity.Vente;
+import com.GMPV.GMPV.Entity.User;
 import com.GMPV.GMPV.Repository.BoutiqueRepository;
 import com.GMPV.GMPV.Repository.ProduitRepository;
 import com.GMPV.GMPV.Repository.StockRepository;
+import com.GMPV.GMPV.Repository.UserRepository;
 import com.GMPV.GMPV.Repository.VenteRepository;
 
 import jakarta.transaction.Transactional;
@@ -25,14 +27,15 @@ public class BoutiqueService {
 	    private final StockRepository stockRepository;
 	    private final ProduitRepository produitRepository;  
 	    private final VenteRepository venteRepository;  
-	    
+	    private final UserRepository userRepository;
 	    
 
-	    public BoutiqueService(BoutiqueRepository boutiqueRepository, StockRepository stockRepository, ProduitService produitService ,ProduitRepository produitRepository , VenteRepository venteRepository) {
+	    public BoutiqueService(BoutiqueRepository boutiqueRepository, StockRepository stockRepository, ProduitService produitService ,ProduitRepository produitRepository , VenteRepository venteRepository,UserRepository userRepository) {
 	        this.boutiqueRepository = boutiqueRepository;
 	        this.stockRepository = stockRepository;
 	        this.produitRepository = produitRepository;
 	        this.venteRepository = venteRepository;
+	        this.userRepository = userRepository;
 	    }
 
     public List<Boutique> getAllBoutiques() {
@@ -44,16 +47,28 @@ public class BoutiqueService {
     }
 
     public Boutique createBoutique(Boutique boutique) {
+        Optional<Boutique> existing = boutiqueRepository.findByNom(boutique.getNom());
+        if (existing.isPresent()) {
+            throw new RuntimeException("Le nom de la boutique existe déjà.");
+        }
         return boutiqueRepository.save(boutique);
     }
 
+
     public Boutique updateBoutique(Long id, Boutique updatedBoutique) {
         return boutiqueRepository.findById(id).map(b -> {
+            // Check if another boutique with the same name exists
+            Optional<Boutique> otherBoutique = boutiqueRepository.findByNom(updatedBoutique.getNom());
+            if (otherBoutique.isPresent() && !otherBoutique.get().getId().equals(id)) {
+                throw new RuntimeException("Le nom de la boutique existe déjà.");
+            }
+
             b.setNom(updatedBoutique.getNom());
             b.setAdresse(updatedBoutique.getAdresse());
             return boutiqueRepository.save(b);
-        }).orElse(null);
+        }).orElseThrow(() -> new RuntimeException("Boutique non trouvée"));
     }
+
     
     @Transactional
     public void deleteBoutique(Long id) {
@@ -66,6 +81,13 @@ public class BoutiqueService {
         for (Vente vente : ventes) {
             vente.setBoutique(null);
             venteRepository.save(vente);
+        }
+
+        // 1b) Rendre boutique=null dans les users liés
+        List<User> users = userRepository.findByBoutiqueId(id);
+        for (User user : users) {
+            user.setBoutique(null);
+            userRepository.save(user);
         }
 
         // 2) Remettre la quantité de stock des produits
@@ -84,6 +106,7 @@ public class BoutiqueService {
         // 4) Supprimer la boutique
         boutiqueRepository.deleteById(id);
     }
+
 
 
 

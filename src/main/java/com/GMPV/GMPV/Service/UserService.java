@@ -64,11 +64,12 @@ public class UserService {
         User existing = getUserById(id);
 
         existing.setUsername(userRequest.getUsername());
-        if (!userRequest.getPassword().startsWith("$2")) { // avoid re-encoding encoded password
+        if (userRequest.getPassword() != null && !userRequest.getPassword().startsWith("$2")) {
             existing.setPassword(passwordEncoder.encode(userRequest.getPassword()));
-        } else {
+        } else if (userRequest.getPassword() != null) {
             existing.setPassword(userRequest.getPassword());
         }
+
 
         existing.setRole(userRequest.getRole());
 
