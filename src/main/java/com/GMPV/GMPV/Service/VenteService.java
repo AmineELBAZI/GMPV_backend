@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import com.GMPV.GMPV.DTO.VenteProduitFiniRequest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import java.util.List;
 
@@ -22,12 +21,15 @@ public class VenteService {
 
     private final VenteRepository venteRepository;
     private final StockRepository stockRepository;
+    private final StockService stockService;  // Add this
 
     private static final Logger logger = LoggerFactory.getLogger(VenteService.class);
 
-    public VenteService(VenteRepository venteRepository, StockRepository stockRepository) {
+    // Constructor injection updated
+    public VenteService(VenteRepository venteRepository, StockRepository stockRepository, StockService stockService) {
         this.venteRepository = venteRepository;
         this.stockRepository = stockRepository;
+        this.stockService = stockService;
     }
 
     public Vente enregistrerVente(Vente vente) {
@@ -56,14 +58,15 @@ public class VenteService {
             }
 
             stock.setQuantity(stockDisponible - quantiteVendue);
-            stockRepository.save(stock);
+
+            // IMPORTANT: use stockService to save with notification check
+            stockService.saveStock(stock);
 
             Vente vente = new Vente();
             vente.setBoutique(venteRequest.getBoutique());
             vente.setProduits(List.of(produitVendu)); // 1 produit par vente
             vente.setQuantity(quantiteVendue);
             vente.setMontantTotal(quantiteVendue * priceSell);
-            
             vente.setDateVente(LocalDateTime.now());
 
             Vente saved = venteRepository.save(vente);
@@ -73,16 +76,12 @@ public class VenteService {
         return ventesEnregistrees;
     }
 
-
-
-    
     public Vente vendreProduitFini(VenteProduitFiniRequest request) {
         Long boutiqueId = request.getBoutiqueId();
         Long bouteilleId = request.getBouteilleId();
         Long huileId = request.getHuileId();
         Long alcoolId = request.getAlcoolId();
 
-        // Charger les stocks
         Stock stockBouteille = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, bouteilleId)
             .orElseThrow(() -> new RuntimeException("Stock de bouteille introuvable"));
 
@@ -93,7 +92,7 @@ public class VenteService {
             .orElseThrow(() -> new RuntimeException("Stock d'alcool introuvable"));
 
         Produit bouteille = stockBouteille.getProduit();
-        String size = bouteille.getName(); // Assure-toi que le nom contient la taille ("20 ml", "30 ml", etc.)
+        String size = bouteille.getName();
 
         double huileNeeded, alcoolNeeded;
         if (size.contains("20")) {
@@ -109,37 +108,34 @@ public class VenteService {
             throw new RuntimeException("Taille de bouteille non reconnue : " + size);
         }
 
-        // Vérification de la disponibilité
         if (stockBouteille.getQuantity() < 1) {
             throw new RuntimeException("Stock de bouteille insuffisant");
         }
-
         if (stockHuile.getQuantity() < huileNeeded) {
             throw new RuntimeException("Stock d'huile insuffisant");
         }
-
         if (stockAlcool.getQuantity() < alcoolNeeded) {
             throw new RuntimeException("Stock d'alcool insuffisant");
         }
 
-        // Mise à jour des stocks
         stockBouteille.setQuantity(stockBouteille.getQuantity() - 1);
         stockHuile.setQuantity(stockHuile.getQuantity() - huileNeeded);
         stockAlcool.setQuantity(stockAlcool.getQuantity() - alcoolNeeded);
 
-        stockRepository.saveAll(Arrays.asList(stockBouteille, stockHuile, stockAlcool));
+        // Save with notification logic:
+        stockService.saveStock(stockBouteille);
+        stockService.saveStock(stockHuile);
+        stockService.saveStock(stockAlcool);
 
-        // Création de la vente
         Vente vente = new Vente();
         vente.setDateVente(LocalDateTime.now());
-        vente.setQuantity(1); // 1 bouteille vendue
+        vente.setQuantity(1);
         vente.setBoutique(stockBouteille.getBoutique());
-        vente.setMontantTotal(request.getMontantTotal()); // Prix fourni par le vendeur
-        vente.setProduits(Arrays.asList(bouteille, stockHuile.getProduit(), stockAlcool.getProduit()));
+        vente.setMontantTotal(request.getMontantTotal());
+        vente.setProduits(List.of(bouteille, stockHuile.getProduit(), stockAlcool.getProduit()));
 
         return venteRepository.save(vente);
     }
-
     public List<Vente> getAllVentes() {
         return venteRepository.findAll();
     }

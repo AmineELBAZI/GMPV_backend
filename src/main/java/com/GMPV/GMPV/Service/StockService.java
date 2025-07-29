@@ -1,5 +1,6 @@
 package com.GMPV.GMPV.Service;
 
+import com.GMPV.GMPV.DTO.StockAlertNotification;
 import com.GMPV.GMPV.Entity.Produit;
 import com.GMPV.GMPV.Entity.Stock;
 import com.GMPV.GMPV.Entity.StockStatus;
@@ -7,6 +8,8 @@ import com.GMPV.GMPV.Repository.ProduitRepository;
 import com.GMPV.GMPV.Repository.StockRepository;
 
 import jakarta.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -99,4 +102,28 @@ public class StockService {
         produit.setQuantityStock(newQuantityStock);
         produitRepository.save(produit);
     }
+    
+    @Autowired
+    private StockNotificationService stockNotificationService;
+
+    public Stock saveStock(Stock stock) {
+        Stock saved = stockRepository.save(stock);
+        System.out.println("Saved stock: " + saved);
+        System.out.println("Stock quantity after save: " + saved.getQuantity());
+
+        if (saved.getQuantity() < 10) {
+            System.out.println("Quantity below threshold (10), preparing notification *************************************************************************************************");
+            StockAlertNotification notification = new StockAlertNotification(
+                saved.getProduit().getName(),
+                saved.getProduit().getReference(),
+                saved.getBoutique().getNom()
+            );
+            stockNotificationService.notifyLowStock(notification);
+        } else {
+            System.out.println("Quantity above threshold, no notification sent *****************************************************************************************************--------");
+        }
+
+        return saved;
+    }
+
 }
