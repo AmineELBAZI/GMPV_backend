@@ -12,8 +12,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 @CrossOrigin(origins = {
-	    "http://localhost:3000", 
-	    "https://gmpv-frontend-o58z.vercel.app"
+	    "http://localhost:3000",
+	    "https://gmpv-frontend-nu.vercel.app"
 	})
 public class ProduitController {
 

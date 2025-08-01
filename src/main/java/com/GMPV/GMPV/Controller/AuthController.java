@@ -21,9 +21,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
 @CrossOrigin(origins = {
-    "http://localhost:3000", 
-    "https://gmpv-frontend-o58z.vercel.app"
-})
+	    "http://localhost:3000",
+	    "https://gmpv-frontend-nu.vercel.app"
+	})
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @CrossOrigin(origins = {
 	    "http://localhost:3000",
-	    "http://gmpv-frontend-o58z.vercel.app"
+	    "https://gmpv-frontend-nu.vercel.app"
 	})
 @RequestMapping("/admin")
 public class AdminController {

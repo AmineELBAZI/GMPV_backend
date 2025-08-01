@@ -51,6 +51,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/boutiques/*/produits").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/stocks/*/valider").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/ventes/multiple").hasAnyRole("VENDEUR", "ADMIN")
+                .requestMatchers("/api/ventes/**").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/ventes/produit-fini").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/api/ventes/boutique/**").hasAnyRole("VENDEUR", "ADMIN")
                 .requestMatchers("/**").hasRole("ADMIN")

@@ -35,6 +35,41 @@ public class VenteService {
     public Vente enregistrerVente(Vente vente) {
         return venteRepository.save(vente);
     }
+    
+    public void deleteVente(Long id) {
+        venteRepository.deleteById(id);
+    }
+
+    public void deleteVentesByIds(List<Long> ids) {
+        for (Long id : ids) {
+            deleteVente(id);
+        }
+    }
+    
+    
+    public void deleteVenteWithStockRestore(Long id) {
+        Vente vente = venteRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Vente introuvable avec ID : " + id));
+
+        Long boutiqueId = vente.getBoutique().getId();
+        List<Produit> produitsVendus = vente.getProduits();
+        double quantiteVendue = vente.getQuantity();
+
+        for (Produit produit : produitsVendus) {
+            Long produitId = produit.getId();
+
+            Stock stock = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, produitId)
+                .orElseThrow(() -> new RuntimeException("Stock introuvable pour le produit ID : " + produitId));
+
+            stock.setQuantity(stock.getQuantity() + quantiteVendue);
+            stockService.saveStock(stock);
+        }
+
+        venteRepository.deleteById(id);
+    }
+
+    
+
 
     public List<Vente> enregistrerVentesMultiples(Vente venteRequest) {
         List<Vente> ventesEnregistrees = new ArrayList<>();
@@ -151,4 +186,5 @@ public class VenteService {
 	public static Logger getLogger() {
 		return logger;
 	}
+	
 }

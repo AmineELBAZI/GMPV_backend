@@ -12,8 +12,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ventes")
 @CrossOrigin(origins = {
-	    "http://localhost:3000", 
-	    "https://gmpv-frontend-o58z.vercel.app"
+	    "http://localhost:3000",
+	    "https://gmpv-frontend-nu.vercel.app"
 	})
 public class VenteController {
 
@@ -54,5 +54,26 @@ public class VenteController {
         List<Vente> ventes = venteService.getVentesByBoutique(boutiqueId);
         return ResponseEntity.ok(ventes);
     }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVente(@PathVariable Long id) {
+        venteService.deleteVente(id);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @DeleteMapping
+    public ResponseEntity<Void> deleteVentes(@RequestBody List<Long> ids) {
+        venteService.deleteVentesByIds(ids);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @DeleteMapping("/safe-delete/{id}")
+    public ResponseEntity<Void> deleteVenteWithStockRestore(@PathVariable Long id) {
+        venteService.deleteVenteWithStockRestore(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
+
 
 }
