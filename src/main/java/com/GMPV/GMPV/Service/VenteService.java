@@ -116,6 +116,7 @@ public class VenteService {
         Long bouteilleId = request.getBouteilleId();
         Long huileId = request.getHuileId();
         Long alcoolId = request.getAlcoolId();
+        String taille = request.getTaille(); // NEW PARAMETER from frontend
 
         Stock stockBouteille = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, bouteilleId)
             .orElseThrow(() -> new RuntimeException("Stock de bouteille introuvable"));
@@ -126,21 +127,23 @@ public class VenteService {
         Stock stockAlcool = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, alcoolId)
             .orElseThrow(() -> new RuntimeException("Stock d'alcool introuvable"));
 
-        Produit bouteille = stockBouteille.getProduit();
-        String size = bouteille.getName();
-
         double huileNeeded, alcoolNeeded;
-        if (size.contains("20")) {
-            huileNeeded = 7;
-            alcoolNeeded = 13;
-        } else if (size.contains("30")) {
-            huileNeeded = 10;
-            alcoolNeeded = 20;
-        } else if (size.contains("50")) {
-            huileNeeded = 18;
-            alcoolNeeded = 32;
-        } else {
-            throw new RuntimeException("Taille de bouteille non reconnue : " + size);
+
+        switch (taille) {
+            case "20":
+                huileNeeded = 7;
+                alcoolNeeded = 13;
+                break;
+            case "30":
+                huileNeeded = 10;
+                alcoolNeeded = 20;
+                break;
+            case "50":
+                huileNeeded = 18;
+                alcoolNeeded = 32;
+                break;
+            default:
+                throw new RuntimeException("Taille de bouteille non reconnue : " + taille);
         }
 
         if (stockBouteille.getQuantity() < 1) {
@@ -157,7 +160,6 @@ public class VenteService {
         stockHuile.setQuantity(stockHuile.getQuantity() - huileNeeded);
         stockAlcool.setQuantity(stockAlcool.getQuantity() - alcoolNeeded);
 
-        // Save with notification logic:
         stockService.saveStock(stockBouteille);
         stockService.saveStock(stockHuile);
         stockService.saveStock(stockAlcool);
@@ -167,10 +169,16 @@ public class VenteService {
         vente.setQuantity(1);
         vente.setBoutique(stockBouteille.getBoutique());
         vente.setMontantTotal(request.getMontantTotal());
-        vente.setProduits(List.of(bouteille, stockHuile.getProduit(), stockAlcool.getProduit()));
+        vente.setProduits(List.of(
+            stockBouteille.getProduit(),
+            stockHuile.getProduit(),
+            stockAlcool.getProduit()
+        ));
 
         return venteRepository.save(vente);
     }
+
+    
     public List<Vente> getAllVentes() {
         return venteRepository.findAll();
     }

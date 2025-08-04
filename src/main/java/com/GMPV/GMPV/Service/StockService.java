@@ -116,7 +116,8 @@ public class StockService {
             StockAlertNotification notification = new StockAlertNotification(
                 saved.getProduit().getName(),
                 saved.getProduit().getReference(),
-                saved.getBoutique().getNom()
+                saved.getBoutique().getNom(),
+                saved.getQuantity() // ← Pass the actual quantity here
             );
             stockNotificationService.notifyLowStock(notification);
         } else {
@@ -125,5 +126,6 @@ public class StockService {
 
         return saved;
     }
+
 
 }

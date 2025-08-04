@@ -18,8 +18,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")   // your websocket endpoint
-                .setAllowedOriginPatterns("*")  // or restrict origins
-                .withSockJS();  // optional fallback
+        registry.addEndpoint("/ws")
+                .setAllowedOrigins(
+                    "http://localhost:3000",                 // for development
+                    "https://gmpv-frontend-nu.vercel.app"       // your deployed frontend
+                )
+                .withSockJS();
     }
 }
