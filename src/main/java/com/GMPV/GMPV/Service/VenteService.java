@@ -11,10 +11,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.GMPV.GMPV.DTO.VenteProduitFiniRequest;
+
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 
 import java.util.List;
+
+import javax.print.Doc;
+import javax.print.*;
 
 @Service
 public class VenteService {
@@ -93,13 +99,11 @@ public class VenteService {
             }
 
             stock.setQuantity(stockDisponible - quantiteVendue);
-
-            // IMPORTANT: use stockService to save with notification check
             stockService.saveStock(stock);
 
             Vente vente = new Vente();
             vente.setBoutique(venteRequest.getBoutique());
-            vente.setProduits(List.of(produitVendu)); // 1 produit par vente
+            vente.setProduits(List.of(produitVendu));
             vente.setQuantity(quantiteVendue);
             vente.setMontantTotal(quantiteVendue * priceSell);
             vente.setDateVente(LocalDateTime.now());
@@ -108,15 +112,20 @@ public class VenteService {
             ventesEnregistrees.add(saved);
         }
 
+        // 🔽 Generate and print receipt here
+        String receipt = generateReceiptText(ventesEnregistrees);
+        printReceipt(receipt); // Add this method as explained earlier
+
         return ventesEnregistrees;
     }
+
 
     public Vente vendreProduitFini(VenteProduitFiniRequest request) {
         Long boutiqueId = request.getBoutiqueId();
         Long bouteilleId = request.getBouteilleId();
         Long huileId = request.getHuileId();
         Long alcoolId = request.getAlcoolId();
-        String taille = request.getTaille(); // NEW PARAMETER from frontend
+        String taille = request.getTaille();
 
         Stock stockBouteille = stockRepository.findByBoutiqueIdAndProduitId(boutiqueId, bouteilleId)
             .orElseThrow(() -> new RuntimeException("Stock de bouteille introuvable"));
@@ -175,11 +184,19 @@ public class VenteService {
             stockAlcool.getProduit()
         ));
 
-        return venteRepository.save(vente);
+        Vente savedVente = venteRepository.save(vente);
+
+        // ✅ Print receipt
+        String receiptText = generateProduitFiniReceipt(savedVente, taille, huileNeeded, alcoolNeeded);
+        printReceipt(receiptText);
+
+        return savedVente;
     }
 
     
-    public List<Vente> getAllVentes() {
+   
+
+	public List<Vente> getAllVentes() {
         return venteRepository.findAll();
     }
 
@@ -194,5 +211,106 @@ public class VenteService {
 	public static Logger getLogger() {
 		return logger;
 	}
+	
+	
+	
+	private String generateReceiptText(List<Vente> ventes) {
+	    StringBuilder sb = new StringBuilder();
+	    
+	    sb.append(" ***** Future Fragrance  Recu De Vente *****\n");
+	    sb.append("     ***********************************\n");
+	    sb.append("\n");
+
+	    // Format date
+	    String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+	    sb.append("Date : ").append(dateStr).append("\n");
+	    sb.append("------------------------------------------------\n");
+	    sb.append("\n");
+	    sb.append(String.format("%-12s %8s %12s\n", "Produit", "Qte", "Total"));
+	    sb.append("------------------------------------------------\n");
+	    double total = 0;
+
+	    for (Vente vente : ventes) {
+	        Produit produit = vente.getProduits().get(0);
+	        String nomProduit = produit.getName();
+	        int quantite = (int) vente.getQuantity();
+	        double montant = vente.getMontantTotal();
+
+	        sb.append(String.format("%-12s %8d %13.2f\n", truncate(nomProduit, 12), quantite, montant));
+	        total += montant;
+	    }
+
+	    sb.append("------------------------------------------------\n");
+	    sb.append(String.format("%-16s %15.2f DH\n", "TOTAL:", total));
+	    sb.append("------------------------------------------------\n");
+	    sb.append("          Merci pour votre achat !\n");
+	    sb.append("                 A bientot !\n");
+	  
+	   
+	    return sb.toString();
+	}
+
+	// Truncate product names if too long
+	private String truncate(String input, int maxLength) {
+	    return input.length() <= maxLength ? input : input.substring(0, maxLength - 1) + "…";
+	}
+	private String generateProduitFiniReceipt(Vente vente, String taille, double huileUsed, double alcoolUsed) {
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(" ***** Future Fragrance  Recu De Vente *****\n");
+	    sb.append("     ***********************************\n");
+	    sb.append("\n");
+	    sb.append("Date : ").append(
+	        vente.getDateVente().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+	    ).append("\n");
+	    
+	    sb.append("------------------------------------------------\n");
+	    sb.append(String.format("%-12s \n", "Ingredient"));
+
+	    for (Produit p : vente.getProduits()) {
+	        String name = p.getName().toLowerCase();
+
+	        // Afficher seulement les produits contenant "huile" ou "bouteille"
+	        if (name.contains("huileNeeded") || name.contains("bouteille")) {
+	            sb.append(String.format(" %6s\n", p.getName()));
+	        }
+	    }
+	    sb.append("Taille : ").append(taille).append(" ml\n");
+	    sb.append("------------------------------------------------\n");
+	    sb.append(String.format("TOTAL : %.2f DH\n", vente.getMontantTotal()));
+	    sb.append("------------------------------------------------\n");
+	    sb.append("          Merci pour votre achat !\n");
+	    sb.append("              A bientot !\n\n");
+
+	    return sb.toString();
+	}
+
+
+	private void printReceipt(String receiptText) {
+	    try {
+	        PrintService printService = PrintServiceLookup.lookupDefaultPrintService();
+
+	        if (printService == null) {
+	            System.out.println("No printer found.");
+	            return;
+	        }
+
+	        // Convert receipt text to bytes (UTF-8 or printer encoding)
+	        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+	        outputStream.write(receiptText.getBytes("UTF-8"));
+
+	        // Add the ESC/POS cut command at the end
+	        byte[] cutCommand = new byte[]{0x1D, 'V', 66, 0}; // GS V 66 0
+	        outputStream.write(cutCommand);
+
+	        DocPrintJob job = printService.createPrintJob();
+	        Doc doc = new SimpleDoc(outputStream.toByteArray(), DocFlavor.BYTE_ARRAY.AUTOSENSE, null);
+	        job.print(doc, null);
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	}
+
+
 	
 }
