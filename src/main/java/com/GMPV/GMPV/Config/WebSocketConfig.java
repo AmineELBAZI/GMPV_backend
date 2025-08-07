@@ -21,7 +21,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
                     "http://localhost:3000",                 // for development
-                    "https://gmpv-frontend-nu.vercel.app"       // your deployed frontend
+                    "https://gmpv-frontend-nu.vercel.app" ,
+                    "**" // all
                 )
                 .withSockJS();
     }

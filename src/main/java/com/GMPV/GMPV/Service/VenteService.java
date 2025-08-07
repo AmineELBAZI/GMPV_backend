@@ -270,7 +270,7 @@ public class VenteService {
 	        String name = p.getName().toLowerCase();
 
 	        // Afficher seulement les produits contenant "huile" ou "bouteille"
-	        if (name.contains("huileNeeded") || name.contains("bouteille")) {
+	        if (name.contains("huile") || name.contains("bouteille")) {
 	            sb.append(String.format(" %6s\n", p.getName()));
 	        }
 	    }
